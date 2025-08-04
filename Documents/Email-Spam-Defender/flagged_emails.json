@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "test1",
+    "subject": "Test email",
+    "sender": "test@example.com",
+    "body": "This is a test",
+    "is_spam": false
+  },
+  {
+    "id": "test-email-1",
+    "subject": "Test",
+    "sender": "test@domain.com",
+    "body": "This is a test email",
+    "is_spam": false
+  },
+  {
+    "id": "198737b1b70fc660",
+    "subject": "",
+    "sender": "",
+    "body": "",
+    "is_spam": false
+  }
+]
