@@ -1,5 +1,6 @@
 from __future__ import print_function
-import os.path
+import os
+import json
 import base64
 import email
 import re
@@ -9,31 +10,39 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# If modifying SCOPES, delete token.json
 SCOPES = ['https://mail.google.com/']
-
 
 def gmail_authenticate():
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    credentials_json = os.getenv("GMAIL_CREDENTIALS")
+    token_json = os.getenv("GMAIL_TOKEN")
+
+    if credentials_json and token_json:
+        # Running in GitHub Actions or env vars are set
+        creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+    else:
+        # Running locally, use local files
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            if credentials_json:
+                flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
+
     return build('gmail', 'v1', credentials=creds)
 
 def list_messages(service):
     results = service.users().messages().list(userId='me', q='is:inbox').execute()
     messages = results.get('messages', [])
     return messages
-
-# -------------------------------------------------------------------------
-# Helper functions for spam detection / handling
 
 def get_message_detail(service, msg_id):
     msg = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
@@ -82,8 +91,6 @@ def move_to_spam(service, msg_id):
 
 def delete_message(service, msg_id):
     service.users().messages().delete(userId='me', id=msg_id).execute()
-
-# -------------------------------------------------------------------------
 
 if __name__ == '__main__':
     service = gmail_authenticate()
