@@ -90,7 +90,35 @@ def move_to_spam(service, msg_id):
     ).execute()
 
 def delete_message(service, msg_id):
-    service.users().messages().delete(userId='me', id=msg_id).execute()
+    service.users().messages().delete(userId='me', id=msg_id).execute
+
+FLAGGED_FILE = "flagged_emails.json"
+
+def save_flagged_email(msg_id, subject, sender, body):
+    email_data = {
+        "id": msg_id,
+        "subject": subject,
+        "sender": sender,
+        "body": body,
+        "is_spam": True
+    }
+
+    # Load existing data
+    if os.path.exists(FLAGGED_FILE):
+        with open(FLAGGED_FILE, "r") as f:
+            try:
+                flagged = json.load(f)
+            except json.JSONDecodeError:
+                flagged = []
+    else:
+        flagged = []
+
+    # Avoid duplicates
+    if not any(email["id"] == msg_id for email in flagged):
+        flagged.append(email_data)
+
+    with open(FLAGGED_FILE, "w") as f:
+        json.dump(flagged, f, indent=2)
 
 if __name__ == '__main__':
     service = gmail_authenticate()
@@ -103,8 +131,9 @@ if __name__ == '__main__':
         subject, sender, body = get_message_detail(service, msg_id)
 
         if is_spam(subject, body):
-            print(f"[SPAM] {subject} → moving to spam & deleting")
+            print(f"[SPAM] {subject} => logging to flagged_emails.json")
+            save_flagged_email(msg_id, subject, sender, body)
             move_to_spam(service, msg_id)
-            delete_message(service, msg_id)
+            # No delete for now — only delete if confirmed later
         else:
             print(f"[OK]   {subject}")
