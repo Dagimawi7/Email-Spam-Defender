@@ -22,11 +22,12 @@ Can be connected to a frontend (React or plain HTML)
 
 Email-Spam-Defender/
 │
->>>>>> dashboard.py         # FastAPI backend
->>>>>> spam_detector.py     # Spam detection logic
->>>>>> requirements.txt     # Python dependencies
->>>>>>frontend/            # Optional UI
->>>>>> README.md            # This file
+├── dashboard.py         # FastAPI backend
+├── spam_detector.py     # Spam detection logic
+├── requirements.txt     # Python dependencies
+├── frontend/            # Optional UI
+└── README.md            # This file
+
 
 🛠 Installation & Run (Backend only)
 1. Clone the repo & Copy code
