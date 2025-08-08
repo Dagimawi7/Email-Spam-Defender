@@ -1,69 +1,66 @@
-from fastapi import FastAPI, HTTPException
+# dashboard.py
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import json
 import os
-
+import json
 
 app = FastAPI()
 
+# Enable CORS for frontend JS requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # Your frontend URL
+    allow_origins=["*"],  # You can restrict this to your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Serve the frontend folder
+frontend_folder = os.path.join(os.path.dirname(__file__), "frontend")
+app.mount("/frontend", StaticFiles(directory=frontend_folder), name="frontend")
 
+
+# Root route - serve the main index.html
 @app.get("/")
-def root():
-    return {"message": "Spam filter dashboard backend running."}
+def serve_index():
+    index_path = os.path.join(frontend_folder, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": "Frontend index.html not found"}
 
 
-DATA_FILE = "flagged_emails.json"
+# Example endpoint to fetch emails
+@app.get("/emails")
+def get_emails():
+    try:
+        # In reality, you'd load from a database or your spam filter process
+        emails = [
+            {"id": 1, "subject": "Win a free iPhone!", "from": "scammer@example.com", "spam": True},
+            {"id": 2, "subject": "Project update", "from": "boss@company.com", "spam": False},
+        ]
+        return emails
+    except Exception as e:
+        return {"error": str(e)}
 
-# Load flagged emails from file or start empty
-def load_flagged_emails():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
-    return []
 
-def save_flagged_emails(emails):
-    with open(DATA_FILE, "w") as f:
-        json.dump(emails, f, indent=2)
+# Endpoint to run spam detection process
+@app.post("/process_emails")
+def process_emails():
+    try:
+        # Here you'd run your spam-checking code
+        # For now, just mock the process
+        processed_emails = [
+            {"id": 1, "subject": "Win a free iPhone!", "from": "scammer@example.com", "spam": True},
+            {"id": 2, "subject": "Your bank account", "from": "fraud@bank.com", "spam": True},
+            {"id": 3, "subject": "Meeting reminder", "from": "hr@company.com", "spam": False},
+        ]
+        return {"message": "Emails processed successfully", "emails": processed_emails}
+    except Exception as e:
+        return {"error": str(e)}
 
-flagged_emails = load_flagged_emails()
 
-class EmailFeedback(BaseModel):
-    id: str
-    subject: str = ""
-    sender: str = ""
-    body: str = ""
-    is_spam: bool
-
-@app.get("/flagged")
-def get_flagged_emails():
-    # Return only emails currently marked as spam
-    return [email for email in flagged_emails if email.get("is_spam", True)]
-
-@app.post("/feedback")
-def post_feedback(feedback: EmailFeedback):
-    global flagged_emails
-    # Update existing email feedback or add new
-    for i, email in enumerate(flagged_emails):
-        if email["id"] == feedback.id:
-            flagged_emails[i]["is_spam"] = feedback.is_spam
-            flagged_emails[i]["subject"] = feedback.subject
-            flagged_emails[i]["sender"] = feedback.sender
-            flagged_emails[i]["body"] = feedback.body
-            save_flagged_emails(flagged_emails)
-            return {"message": "Feedback updated"}
-    # New email
-    flagged_emails.append(feedback.dict())
-    save_flagged_emails(flagged_emails)
-    return {"message": "Feedback saved"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("dashboard:app", host="127.0.0.1", port=8000, reload=True)
